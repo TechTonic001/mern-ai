@@ -1,5 +1,6 @@
 const RunwayML = require('@runwayml/sdk');
 const { requireEnv } = require('../config/env');
+const localVideo = require('./localVideoService');
 
 const client = new RunwayML({
   apiKey: requireEnv('RUNWAYML_API_SECRET'),
@@ -13,6 +14,15 @@ const wrapRunwayError = (error) => {
   return wrappedError;
 };
 
+const shouldUseLocalFallback = (error) => {
+  const message = (error.message || '').toLowerCase();
+  return error.statusCode === 400
+    || error.statusCode === 401
+    || error.statusCode === 402
+    || message.includes('not enough credits')
+    || message.includes('promptimage');
+};
+
 const submitJob = async ({ prompt, duration = 5, ratio = '1280:720' }) => {
   try {
     const task = await client.textToVideo.create({
@@ -21,9 +31,13 @@ const submitJob = async ({ prompt, duration = 5, ratio = '1280:720' }) => {
       duration: clampDuration(duration),
       ratio,
     });
-    return task.id;
+    return { provider: 'runway', taskId: task.id };
   } catch (error) {
-    throw wrapRunwayError(error);
+    const wrapped = wrapRunwayError(error);
+    if (!shouldUseLocalFallback(wrapped)) {
+      throw wrapped;
+    }
+    return { provider: 'local' };
   }
 };
 
@@ -48,7 +62,13 @@ const pollJob = async (taskId) => {
   }
 };
 
+const generateLocalVideo = async ({ jobId, prompt, duration, baseUrl }) => {
+  await localVideo.createPromptVideo({ jobId, prompt, duration });
+  return `${baseUrl}/media/${jobId}.mp4`;
+};
+
 module.exports = {
   submitJob,
   pollJob,
+  generateLocalVideo,
 };

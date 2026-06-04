@@ -1,4 +1,5 @@
 const axios = require('axios');
+const gTTS = require('gtts');
 const { requireEnv } = require('../config/env');
 
 const elevenLabsClient = axios.create({
@@ -9,6 +10,20 @@ const elevenLabsClient = axios.create({
     Accept: 'application/json',
   },
 });
+
+const FALLBACK_VOICES = [
+  { voice_id: 'gtts-en', name: 'English (fallback)' },
+  { voice_id: 'gtts-es', name: 'Spanish (fallback)' },
+  { voice_id: 'gtts-fr', name: 'French (fallback)' },
+];
+
+const voiceLangMap = {
+  'gtts-en': 'en',
+  'gtts-es': 'es',
+  'gtts-fr': 'fr',
+};
+
+const resolveLang = (voiceId) => voiceLangMap[voiceId] || 'en';
 
 const parseElevenLabsError = (error) => {
   const statusCode = error.response?.status || 502;
@@ -34,6 +49,11 @@ const parseElevenLabsError = (error) => {
   return wrappedError;
 };
 
+const shouldUseFallback = (error) => {
+  const status = error.statusCode || error.response?.status;
+  return status === 401 || status === 402 || status === 429;
+};
+
 const getVoiceSettings = (settings = {}) => ({
   stability: Number.isFinite(settings.stability) ? settings.stability : 0.5,
   similarity_boost: Number.isFinite(settings.similarityBoost) ? settings.similarityBoost : 0.75,
@@ -41,16 +61,35 @@ const getVoiceSettings = (settings = {}) => ({
   use_speaker_boost: settings.useSpeakerBoost ?? true,
 });
 
+const synthesizeWithGtts = (text, voiceId) => new Promise((resolve, reject) => {
+  const lang = resolveLang(voiceId);
+  const speech = new gTTS(text, lang);
+  const stream = speech.stream();
+  const chunks = [];
+
+  stream.on('data', (chunk) => chunks.push(chunk));
+  stream.on('end', () => resolve(Buffer.concat(chunks)));
+  stream.on('error', reject);
+});
+
 const getVoices = async () => {
   try {
     const response = await elevenLabsClient.get('/voices');
-    return response.data?.voices || [];
+    const voices = response.data?.voices || [];
+    return voices.length ? voices : FALLBACK_VOICES;
   } catch (error) {
+    if (shouldUseFallback(error)) {
+      return FALLBACK_VOICES;
+    }
     throw parseElevenLabsError(error);
   }
 };
 
 const synthesize = async ({ text, voiceId, settings = {} }) => {
+  if (voiceId.startsWith('gtts-')) {
+    return synthesizeWithGtts(text, voiceId);
+  }
+
   try {
     const response = await elevenLabsClient.post(
       `/text-to-speech/${voiceId}`,
@@ -61,15 +100,17 @@ const synthesize = async ({ text, voiceId, settings = {} }) => {
       },
       {
         responseType: 'arraybuffer',
-        headers: {
-          Accept: 'audio/mpeg',
-        },
+        headers: { Accept: 'audio/mpeg' },
       }
     );
 
     return Buffer.from(response.data);
   } catch (error) {
-    throw parseElevenLabsError(error);
+    const parsed = parseElevenLabsError(error);
+    if (!shouldUseFallback(parsed)) {
+      throw parsed;
+    }
+    return synthesizeWithGtts(text, voiceId);
   }
 };
 

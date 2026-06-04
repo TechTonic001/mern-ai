@@ -33,7 +33,10 @@ export default function Dashboard() {
         <div>
           <p className="eyebrow">Connected workspace</p>
           <h1>Generate voice and video from one place.</h1>
-          <p className="muted">Signed in as {user?.email || 'unknown'}</p>
+          <p className="muted">
+            Signed in as {user?.email || 'unknown'}
+            {user?.ttsCredits != null ? ` · TTS credits: ${user.ttsCredits} · TTV credits: ${user.ttvCredits}` : null}
+          </p>
         </div>
         <button type="button" className="secondary" onClick={handleLogout}>
           Logout
@@ -43,13 +46,13 @@ export default function Dashboard() {
       <section className="dashboard-grid">
         <article className="panel feature-panel">
           <h2>Text to Speech</h2>
-          <p>Convert scripts into downloadable audio through ElevenLabs.</p>
+          <p>Convert scripts into audio (ElevenLabs, with automatic fallback if unavailable).</p>
           <Link to="/tts" className="primary-link">Open TTS</Link>
         </article>
 
         <article className="panel feature-panel">
           <h2>Text to Video</h2>
-          <p>Queue a Runway video generation job and poll for completion.</p>
+          <p>Generate video via Runway, or a local fallback clip when Runway credits are unavailable.</p>
           <Link to="/ttv" className="primary-link">Open TTV</Link>
         </article>
       </section>

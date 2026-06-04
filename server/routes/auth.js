@@ -5,6 +5,14 @@ const User = require('../models/User');
 
 const signToken = (user) => jwt.sign({ userId: user._id }, process.env.JWT_SECRET, { expiresIn: '7d' });
 
+const toPublicUser = (user) => ({
+  id: user._id,
+  email: user.email,
+  plan: user.plan,
+  ttsCredits: user.ttsCredits,
+  ttvCredits: user.ttvCredits,
+});
+
 router.post('/register', [
   body('email').isEmail().withMessage('A valid email is required').normalizeEmail(),
   body('password').isLength({ min: 8 }).withMessage('Password must be at least 8 characters long'),
@@ -22,7 +30,7 @@ router.post('/register', [
 
     const user = await User.create({ email, passwordHash: password });
     const token = signToken(user);
-    res.status(201).json({ token, user: { id: user._id, email: user.email, plan: user.plan } });
+    res.status(201).json({ token, user: toPublicUser(user) });
   } catch (err) { res.status(500).json({ error: err.message }); }
 });
 
@@ -43,7 +51,7 @@ router.post('/login', [
     }
 
     const token = signToken(user);
-    res.json({ token, user: { id: user._id, email: user.email, plan: user.plan } });
+    res.json({ token, user: toPublicUser(user) });
   } catch (err) { res.status(500).json({ error: err.message }); }
 });
 

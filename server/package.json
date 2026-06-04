@@ -6,12 +6,14 @@
   "scripts": {
     "start": "node index.js",
     "dev": "nodemon index.js",
+    "ensure-user": "node scripts/ensure-user.js",
     "test": "echo \"Error: no test specified\" && exit 1"
   },
   "keywords": [],
   "author": "",
   "license": "ISC",
   "dependencies": {
+    "@ffmpeg-installer/ffmpeg": "^1.1.0",
     "@runwayml/sdk": "^3.21.1",
     "axios": "^1.16.1",
     "bcryptjs": "^3.0.3",
@@ -21,6 +23,7 @@
     "express-validator": "^7.3.2",
     "fluent-ffmpeg": "^2.1.3",
     "form-data": "^4.0.5",
+    "gtts": "^0.2.1",
     "helmet": "^8.2.0",
     "jsonwebtoken": "^9.0.3",
     "mongodb": "^7.2.0",

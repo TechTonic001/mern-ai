@@ -4,6 +4,7 @@ const TTVJob = require('../models/TTVJob');
 const ttvService = require('../services/ttvService');
 
 const sleep = (ms) => new Promise((resolve) => setTimeout(resolve, ms));
+const publicBaseUrl = process.env.PUBLIC_API_URL || 'http://localhost:5000';
 
 const processVideoJob = async (payload) => {
   const { ttvJobId, prompt, style, duration } = payload;
@@ -13,21 +14,37 @@ const processVideoJob = async (payload) => {
     throw new Error('TTV job record not found');
   }
 
+  const fullPrompt = style ? `${prompt}\nStyle: ${style}` : prompt;
+
   try {
     dbJob.status = 'processing';
     await dbJob.save();
 
-    const providerJobId = await ttvService.submitJob({
-      prompt: style ? `${prompt}\nStyle: ${style}` : prompt,
+    const submission = await ttvService.submitJob({
+      prompt: fullPrompt,
       duration,
     });
-    dbJob.providerJobId = providerJobId;
+
+    if (submission.provider === 'local') {
+      dbJob.videoUrl = await ttvService.generateLocalVideo({
+        jobId: ttvJobId,
+        prompt: fullPrompt,
+        duration,
+        baseUrl: publicBaseUrl,
+      });
+      dbJob.status = 'done';
+      dbJob.errorMessage = undefined;
+      await dbJob.save();
+      return;
+    }
+
+    dbJob.providerJobId = submission.taskId;
     await dbJob.save();
 
     let attempts = 0;
     while (attempts < 60) {
       await sleep(5000);
-      const result = await ttvService.pollJob(providerJobId);
+      const result = await ttvService.pollJob(submission.taskId);
       if (result.status === 'done') {
         dbJob.status = 'done';
         dbJob.videoUrl = result.videoUrl;
@@ -43,10 +60,23 @@ const processVideoJob = async (payload) => {
 
     throw new Error('Timed out after 5 minutes');
   } catch (err) {
-    dbJob.status = 'failed';
-    dbJob.errorMessage = err.message;
-    await dbJob.save();
-    throw err;
+    try {
+      dbJob.videoUrl = await ttvService.generateLocalVideo({
+        jobId: ttvJobId,
+        prompt: fullPrompt,
+        duration,
+        baseUrl: publicBaseUrl,
+      });
+      dbJob.status = 'done';
+      dbJob.errorMessage = undefined;
+      await dbJob.save();
+      return;
+    } catch (fallbackError) {
+      dbJob.status = 'failed';
+      dbJob.errorMessage = fallbackError.message || err.message;
+      await dbJob.save();
+      throw fallbackError;
+    }
   }
 };
 
