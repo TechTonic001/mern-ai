@@ -1,4 +1,4 @@
-import axios from 'axios';
+import { api } from '../lib/api.js';
 import { useEffect, useState } from 'react';
 import { Link } from 'react-router-dom';
 
@@ -20,7 +20,7 @@ export default function TTVPage() {
 
     async function pollStatus() {
       try {
-        const response = await axios.get(`/api/ttv/status/${jobId}`);
+        const response = await api.get(`/api/ttv/status/${jobId}`);
         if (!active) {
           return;
         }
@@ -55,7 +55,7 @@ export default function TTVPage() {
     setVideoUrl('');
 
     try {
-      const response = await axios.post('/api/ttv/generate', {
+      const response = await api.post('/api/ttv/generate', {
         prompt,
         duration: Number(duration),
       });

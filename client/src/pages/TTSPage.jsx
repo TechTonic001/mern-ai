@@ -1,4 +1,4 @@
-import axios from 'axios';
+import { api } from '../lib/api.js';
 import { useEffect, useState } from 'react';
 import { Link } from 'react-router-dom';
 
@@ -15,7 +15,7 @@ export default function TTSPage() {
 
     async function loadVoices() {
       try {
-        const response = await axios.get('/api/tts/voices');
+        const response = await api.get('/api/tts/voices');
         const voiceList = response.data.voices || response.data || [];
         if (mounted) {
           setVoices(voiceList);
@@ -49,7 +49,7 @@ export default function TTSPage() {
     setError('');
 
     try {
-      const response = await axios.post(
+      const response = await api.post(
         '/api/tts/generate',
         { text, voiceId },
         { responseType: 'blob' }

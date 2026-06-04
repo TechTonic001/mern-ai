@@ -1,10 +1,10 @@
-import axios from 'axios';
+import { api } from '../lib/api.js';
 import { useQuery } from '@tanstack/react-query';
 import { Link, useNavigate } from 'react-router-dom';
 import { useAuth } from '../context/AuthContext.jsx';
 
 async function fetchHistory(path) {
-  const response = await axios.get(path);
+  const response = await api.get(path);
   return response.data;
 }
 

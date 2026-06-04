@@ -1,4 +1,4 @@
-import axios from 'axios';
+import { api } from '../lib/api.js';
 import { useState } from 'react';
 import { Link, useNavigate } from 'react-router-dom';
 import { useAuth } from '../context/AuthContext.jsx';
@@ -17,7 +17,7 @@ export default function AuthPage({ mode }) {
 
     try {
       const endpoint = mode === 'login' ? '/api/auth/login' : '/api/auth/register';
-      const response = await axios.post(endpoint, form);
+      const response = await api.post(endpoint, form);
       login(response.data);
       navigate('/dashboard', { replace: true });
     } catch (requestError) {

@@ -1,7 +1,5 @@
-import axios from 'axios';
 import { createContext, useContext, useEffect, useMemo, useState } from 'react';
-
-axios.defaults.baseURL = 'http://localhost:5000';
+import { api } from '../lib/api.js';
 
 const tokenKey = 'token';
 const userKey = 'user';
@@ -18,11 +16,11 @@ export function AuthProvider({ children }) {
 
   useEffect(() => {
     if (token) {
-      axios.defaults.headers.common.Authorization = `Bearer ${token}`;
+      api.defaults.headers.common.Authorization = `Bearer ${token}`;
       return;
     }
 
-    delete axios.defaults.headers.common.Authorization;
+    delete api.defaults.headers.common.Authorization;
   }, [token]);
 
   const value = useMemo(() => {
@@ -35,14 +33,14 @@ export function AuthProvider({ children }) {
         setUser(authResponse.user);
         localStorage.setItem(tokenKey, authResponse.token);
         localStorage.setItem(userKey, JSON.stringify(authResponse.user));
-        axios.defaults.headers.common.Authorization = `Bearer ${authResponse.token}`;
+        api.defaults.headers.common.Authorization = `Bearer ${authResponse.token}`;
       },
       logout() {
         setToken(null);
         setUser(null);
         localStorage.removeItem(tokenKey);
         localStorage.removeItem(userKey);
-        delete axios.defaults.headers.common.Authorization;
+        delete api.defaults.headers.common.Authorization;
       },
     };
   }, [token, user]);
