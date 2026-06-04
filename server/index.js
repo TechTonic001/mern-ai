@@ -25,6 +25,10 @@ app.use('/api/auth', require('./routes/auth'));
 app.use('/api/tts', require('./routes/tts'));
 app.use('/api/ttv', require('./routes/ttv'));
 
+app.get('/', (req, res) => {
+    res.send("MERN backend is running successfully!");
+});
+
 mongoose.connect(process.env.MONGO_URI, {
   serverSelectionTimeoutMS: 15000,
 })
