@@ -61,7 +61,21 @@ export default function TTSPage() {
 
       setAudioUrl(URL.createObjectURL(response.data));
     } catch (requestError) {
-      setError(requestError.response?.data?.error || 'Unable to generate audio');
+      let message = 'Unable to generate audio';
+      const payload = requestError.response?.data;
+
+      if (payload instanceof Blob) {
+        try {
+          const parsed = JSON.parse(await payload.text());
+          message = parsed.error || message;
+        } catch {
+          // keep default message
+        }
+      } else if (payload?.error) {
+        message = payload.error;
+      }
+
+      setError(message);
     } finally {
       setLoading(false);
     }

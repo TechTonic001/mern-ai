@@ -1,16 +1,9 @@
-const Bull = require('bull');
-const mongoose = require('mongoose');
+require('../config/env');
+
 const TTVJob = require('../models/TTVJob');
 const ttvService = require('../services/ttvService');
-require('dotenv').config();
 
-mongoose.connect(process.env.MONGO_URI).catch((error) => {
-  console.error('MongoDB worker connection error:', error);
-});
-
-const ttvQueue = new Bull('ttv-jobs', process.env.REDIS_URL || 'redis://localhost:6379');
 const sleep = (ms) => new Promise((resolve) => setTimeout(resolve, ms));
-let queueReady = true;
 
 const processVideoJob = async (payload) => {
   const { ttvJobId, prompt, style, duration } = payload;
@@ -43,7 +36,7 @@ const processVideoJob = async (payload) => {
         return;
       }
       if (result.status === 'failed') {
-        throw new Error('Runway job failed');
+        throw new Error(result.failure || 'Runway job failed');
       }
       attempts++;
     }
@@ -58,32 +51,16 @@ const processVideoJob = async (payload) => {
 };
 
 const addJob = async (data) => {
-  if (queueReady) {
-    try {
-      return await ttvQueue.add(data, { attempts: 3, backoff: 5000 });
-    } catch (error) {
-      queueReady = false;
-      console.error('Redis queue unavailable, falling back to in-process worker:', error.message);
-    }
-  }
-
-  processVideoJob(data).catch((error) => {
-    console.error('In-process TTV job failed:', error.message);
+  setImmediate(() => {
+    processVideoJob(data).catch((error) => {
+      console.error('TTV job failed:', error.message);
+    });
   });
 
   return { id: `inline-${data.ttvJobId}` };
 };
 
-ttvQueue.on('error', (error) => {
-  queueReady = false;
-  console.error('Redis queue error:', error.message);
-});
-
-ttvQueue.process(async (job) => {
-  await processVideoJob(job.data);
-});
-
-console.log('TTV Worker listening...');
+console.log('TTV worker ready (in-process, no Redis required)');
 
 module.exports = {
   addJob,

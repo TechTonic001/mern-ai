@@ -97,7 +97,7 @@ export default function TTVPage() {
             <input
               type="number"
               min="1"
-              max="20"
+              max="10"
               value={duration}
               onChange={(event) => setDuration(event.target.value)}
               required

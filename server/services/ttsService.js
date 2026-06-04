@@ -1,14 +1,38 @@
 const axios = require('axios');
-require('dotenv').config();
+const { requireEnv } = require('../config/env');
 
 const elevenLabsClient = axios.create({
   baseURL: 'https://api.elevenlabs.io/v1',
   headers: {
-    'xi-api-key': process.env.ELEVENLABS_API_KEY,
+    'xi-api-key': requireEnv('ELEVENLABS_API_KEY'),
     'Content-Type': 'application/json',
     Accept: 'application/json',
   },
 });
+
+const parseElevenLabsError = (error) => {
+  const statusCode = error.response?.status || 502;
+  let detail = error.response?.data?.detail;
+
+  if (!detail && error.response?.data) {
+    try {
+      const raw = Buffer.isBuffer(error.response.data)
+        ? error.response.data.toString('utf8')
+        : error.response.data;
+      const parsed = typeof raw === 'string' ? JSON.parse(raw) : raw;
+      detail = parsed?.detail;
+    } catch {
+      // ignore JSON parse failures
+    }
+  }
+
+  const message = typeof detail === 'string'
+    ? detail
+    : detail?.message || error.message;
+  const wrappedError = new Error(message);
+  wrappedError.statusCode = statusCode;
+  return wrappedError;
+};
 
 const getVoiceSettings = (settings = {}) => ({
   stability: Number.isFinite(settings.stability) ? settings.stability : 0.5,
@@ -22,12 +46,7 @@ const getVoices = async () => {
     const response = await elevenLabsClient.get('/voices');
     return response.data?.voices || [];
   } catch (error) {
-    const statusCode = error.response?.status || 502;
-    const detail = error.response?.data?.detail;
-    const message = typeof detail === 'string' ? detail : detail?.message || error.message;
-    const wrappedError = new Error(`ElevenLabs voices request failed: ${message}`);
-    wrappedError.statusCode = statusCode;
-    throw wrappedError;
+    throw parseElevenLabsError(error);
   }
 };
 
@@ -50,12 +69,7 @@ const synthesize = async ({ text, voiceId, settings = {} }) => {
 
     return Buffer.from(response.data);
   } catch (error) {
-    const statusCode = error.response?.status || 502;
-    const detail = error.response?.data?.detail;
-    const message = typeof detail === 'string' ? detail : detail?.message || error.message;
-    const wrappedError = new Error(`ElevenLabs synthesis failed: ${message}`);
-    wrappedError.statusCode = statusCode;
-    throw wrappedError;
+    throw parseElevenLabsError(error);
   }
 };
 

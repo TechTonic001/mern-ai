@@ -1,9 +1,10 @@
+require('./config/env');
+
 const express = require('express');
 const mongoose = require('mongoose');
 const cors = require('cors');
 const helmet = require('helmet');
 const morgan = require('morgan');
-require('dotenv').config();
 
 const app = express();
 
@@ -17,12 +18,19 @@ app.use('/api/auth', require('./routes/auth'));
 app.use('/api/tts', require('./routes/tts'));
 app.use('/api/ttv', require('./routes/ttv'));
 
-mongoose.connect(process.env.MONGO_URI)
+mongoose.connect(process.env.MONGO_URI, {
+  serverSelectionTimeoutMS: 15000,
+})
   .then(() => {
     const PORT = process.env.PORT || 5000;
-    app.listen(PORT, () => console.log('Server running on port ' + PORT));
-    console.log('MongoDB connected');
+    app.listen(PORT, () => {
+      console.log(`Server running on port ${PORT}`);
+      console.log('MongoDB connected');
+    });
   })
-  .catch(err => console.error('MongoDB error:', err));
+  .catch((err) => {
+    console.error('MongoDB connection failed:', err.message);
+    process.exit(1);
+  });
 
 module.exports = app;
