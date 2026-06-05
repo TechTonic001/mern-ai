@@ -1,7 +1,9 @@
+const PRODUCTION_FRONTEND = process.env.FRONTEND_URL || 'https://mern-cilent-eight.vercel.app';
+
 const DEFAULT_ORIGINS = [
   'http://localhost:5173',
   'http://127.0.0.1:5173',
-  'https://mern-cilent-eight.vercel.app',
+  PRODUCTION_FRONTEND,
 ];
 
 const parseOrigins = () => {
@@ -13,27 +15,44 @@ const parseOrigins = () => {
   return [...new Set([...DEFAULT_ORIGINS, ...fromEnv])];
 };
 
+const isOriginAllowed = (origin) => {
+  if (!origin) {
+    return true;
+  }
+
+  const allowedOrigins = parseOrigins();
+  if (allowedOrigins.includes(origin)) {
+    return true;
+  }
+
+  try {
+    const { hostname, protocol } = new URL(origin);
+    // Allow Vercel preview + production frontend deployments
+    if (protocol === 'https:' && hostname.endsWith('.vercel.app')) {
+      return true;
+    }
+  } catch {
+    return false;
+  }
+
+  return false;
+};
+
 const corsOptions = {
   origin(origin, callback) {
-    const allowedOrigins = parseOrigins();
-
-    // Non-browser clients (Postman, server-to-server) send no Origin header
-    if (!origin) {
+    if (isOriginAllowed(origin)) {
       return callback(null, true);
     }
-
-    if (allowedOrigins.includes(origin)) {
-      return callback(null, true);
-    }
-
-    return callback(new Error(`CORS blocked for origin: ${origin}`));
+    return callback(null, false);
   },
   credentials: true,
   methods: ['GET', 'POST', 'PUT', 'PATCH', 'DELETE', 'OPTIONS'],
-  allowedHeaders: ['Content-Type', 'Authorization'],
+  allowedHeaders: ['Content-Type', 'Authorization', 'X-Requested-With'],
+  optionsSuccessStatus: 204,
 };
 
 module.exports = {
   corsOptions,
   parseOrigins,
+  isOriginAllowed,
 };

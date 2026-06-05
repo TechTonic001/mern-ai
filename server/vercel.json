@@ -1,9 +1,9 @@
 {
   "version": 2,
-  "installCommand": "cd server && npm install",
+  "installCommand": "npm install",
   "builds": [
     {
-      "src": "server/index.js",
+      "src": "index.js",
       "use": "@vercel/node",
       "config": {
         "maxDuration": 60
@@ -13,7 +13,7 @@
   "routes": [
     {
       "src": "/(.*)",
-      "dest": "server/index.js"
+      "dest": "index.js"
     }
   ]
 }
